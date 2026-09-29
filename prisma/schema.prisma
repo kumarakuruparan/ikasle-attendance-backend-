@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  EMPLOYEE
+  HR
+  CEO
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  COMPLETED
+  INCOMPLETE
+  ABSENT
+}
+
+enum BreakType {
+  MORNING
+  LUNCH
+  EVENING
+  OTHER
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("departments")
+}
+
+model User {
+  id               String           @id @default(cuid())
+  clerkUserId      String           @unique
+  employeeId       String           @unique
+  firstName        String
+  lastName         String
+  email            String           @unique
+  phone            String?
+  profileImage     String?
+  role             Role             @default(EMPLOYEE)
+  jobTitle         String?
+  departmentId     String?
+  department       Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  joiningDate      DateTime         @default(now())
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  isActive         Boolean          @default(true)
+  attendances      Attendance[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([clerkUserId])
+  @@index([email])
+  @@index([employeeId])
+  @@index([departmentId])
+  @@index([role])
+  @@index([isActive])
+  @@index([employmentStatus])
+  @@map("users")
+}
+
+model Attendance {
+  id                  String           @id @default(cuid())
+  userId              String
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                DateTime         @db.Date
+  checkInAt           DateTime
+  checkOutAt          DateTime?
+  checkInLatitude     Float
+  checkInLongitude    Float
+  checkInAccuracy     Float
+  checkOutLatitude    Float?
+  checkOutLongitude   Float?
+  checkOutAccuracy    Float?
+  totalBreakMinutes   Int              @default(0)
+  totalWorkingMinutes Int              @default(0)
+  status              AttendanceStatus @default(PRESENT)
+  breaks              Break[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@index([userId, date])
+  @@map("attendances")
+}
+
+model Break {
+  id              String     @id @default(cuid())
+  attendanceId    String
+  attendance      Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  type            BreakType  @default(OTHER)
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationMinutes Int        @default(0)
+  createdAt       DateTime   @default(now())
+
+  @@index([attendanceId])
+  @@index([startedAt])
+  @@map("breaks")
+}
+
+model CompanySettings {
+  id                         String   @id @default("default")
+  officeLatitude             Float    @default(12.9716)
+  officeLongitude            Float    @default(77.5946)
+  officeRadiusMeters         Float    @default(300.0)
+  officeStartTime            String   @default("09:30")
+  officeEndTime              String   @default("19:00")
+  maxAccuracyThresholdMeters Float    @default(150.0)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  @@map("company_settings")
+}
